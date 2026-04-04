@@ -1,48 +1,90 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form
 from sqlalchemy.orm import Session
 from database import get_db
-from models import ProductoDB
-from auth import verificar_admin
-from pydantic import BaseModel
+from models import ProductoDB, Usuario, Categoria
+from schemas.product_schema import Producto, ProductoResponse
+import shutil
 
-router = APIRouter()
-
-
-# 🔹 MODELO
-class Producto(BaseModel):
-    nombre: str
-    precio: int
-    cantidad: int
+router = APIRouter(prefix="/productos", tags=["Productos"])
 
 
-# 🛒 OBTENER PRODUCTOS (PÚBLICO)
-@router.get("/")
+# 🛒 OBTENER PRODUCTOS
+@router.get("/", response_model=list[ProductoResponse])
 def obtener_productos(
+    categoria_id: int = None,
+    search: str = None,
+    limit: int = 10,
+    offset: int = 0,
     db: Session = Depends(get_db)
 ):
-    return db.query(ProductoDB).all()
+    query = db.query(ProductoDB)
+
+    if categoria_id:
+        query = query.filter(ProductoDB.categoria_id == categoria_id)
+
+    if search:
+        query = query.filter(ProductoDB.nombre.ilike(f"%{search}%"))
+
+    query = query.offset(offset).limit(limit)
+
+    return query.all()
 
 
-# ➕ AGREGAR PRODUCTO (SOLO ADMIN 🔥)
-@router.post("/")
+# ➕ AGREGAR PRODUCTO
+@router.post("/", response_model=ProductoResponse)
 def agregar_producto(
-    producto: Producto,
-    admin = Depends(verificar_admin),
+    nombre: str = Form(...),
+    precio: int = Form(...),
+    cantidad: int = Form(...),
+    categoria_id: int = Form(...),
+    imagen: UploadFile = File(None),
     db: Session = Depends(get_db)
 ):
-    nuevo = ProductoDB(**producto.dict())
+    # validar usuario (simulado)
+    user_db = db.query(Usuario).first()
+
+    if not user_db:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    # validar categoría
+    categoria = db.query(Categoria).filter(
+        Categoria.id == categoria_id
+    ).first()
+
+    if not categoria:
+        raise HTTPException(status_code=404, detail="Categoría no existe")
+
+    # guardar imagen
+    filename = None
+    if imagen:
+        filename = imagen.filename
+        file_path = f"images/{filename}"
+
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(imagen.file, buffer)
+
+    # crear producto
+    nuevo = ProductoDB(
+        nombre=nombre,
+        precio=precio,
+        cantidad=cantidad,
+        categoria_id=categoria_id,
+        usuario_id=user_db.id,
+        imagen=filename
+    )
+
     db.add(nuevo)
     db.commit()
     db.refresh(nuevo)
+
     return nuevo
 
 
-# ✏️ ACTUALIZAR PRODUCTO (SOLO ADMIN 🔥)
-@router.put("/{id}")
+# ✏️ ACTUALIZAR PRODUCTO
+@router.put("/{id}", response_model=ProductoResponse)
 def actualizar_producto(
     id: int,
     producto_actualizado: Producto,
-    admin = Depends(verificar_admin),
     db: Session = Depends(get_db)
 ):
     producto = db.query(ProductoDB).filter(ProductoDB.id == id).first()
@@ -53,6 +95,7 @@ def actualizar_producto(
     producto.nombre = producto_actualizado.nombre
     producto.precio = producto_actualizado.precio
     producto.cantidad = producto_actualizado.cantidad
+    producto.categoria_id = producto_actualizado.categoria_id
 
     db.commit()
     db.refresh(producto)
@@ -60,11 +103,10 @@ def actualizar_producto(
     return producto
 
 
-# ❌ ELIMINAR (SOLO ADMIN)
+# ❌ ELIMINAR PRODUCTO
 @router.delete("/{id}")
 def eliminar_producto(
     id: int,
-    admin = Depends(verificar_admin),
     db: Session = Depends(get_db)
 ):
     producto = db.query(ProductoDB).filter(ProductoDB.id == id).first()
@@ -75,52 +117,4 @@ def eliminar_producto(
     db.delete(producto)
     db.commit()
 
-    return {"mensaje": "Producto eliminado"}
-
-
-# 🔎 BUSCAR
-@router.get("/buscar")
-def buscar(
-    nombre: str,
-    db: Session = Depends(get_db)
-):
-    return db.query(ProductoDB).filter(
-        ProductoDB.nombre.contains(nombre)
-    ).all()
-
-
-# 💰 FILTRAR
-@router.get("/filtro")
-def filtrar_productos(
-    precio_min: int = 0,
-    precio_max: int = 1000000,
-    db: Session = Depends(get_db)
-):
-    return db.query(ProductoDB).filter(
-        ProductoDB.precio >= precio_min,
-        ProductoDB.precio <= precio_max
-    ).all()
-
-
-# 📊 ORDENAR
-@router.get("/ordenar")
-def ordenar_productos(
-    orden: str,
-    db: Session = Depends(get_db)
-):
-    if orden == "asc":
-        return db.query(ProductoDB).order_by(ProductoDB.precio.asc()).all()
-    elif orden == "desc":
-        return db.query(ProductoDB).order_by(ProductoDB.precio.desc()).all()
-    else:
-        raise HTTPException(status_code=400, detail="Usa 'asc' o 'desc'")
-
-
-# 📄 PAGINACIÓN
-@router.get("/paginacion")
-def paginacion(
-    skip: int,
-    limit: int,
-    db: Session = Depends(get_db)
-):
-    return db.query(ProductoDB).offset(skip).limit(limit).all()
+    return {"mensaje": "Producto eliminado correctamente"}
