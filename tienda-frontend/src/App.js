@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 
+// 🔥 URL BACKEND (CAMBIA ESTO)
+const API_URL = "https://TU-BACKEND.onrender.com";
+
 function App() {
   const [productos, setProductos] = useState([]);
   const [categorias, setCategorias] = useState([]);
@@ -23,8 +26,9 @@ function App() {
     }
   }, [carrito, cargado]);
 
+  // 🔥 CATEGORÍAS
   useEffect(() => {
-    fetch("http://127.0.0.1:8002/categorias")
+    fetch(`${API_URL}/categorias`)
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) setCategorias(data);
@@ -32,10 +36,11 @@ function App() {
       });
   }, []);
 
+  // 🔥 PRODUCTOS
   useEffect(() => {
     const url = busqueda
-      ? `http://127.0.0.1:8002/productos/?search=${busqueda}`
-      : `http://127.0.0.1:8002/productos/`;
+      ? `${API_URL}/productos/?search=${busqueda}`
+      : `${API_URL}/productos/`;
 
     fetch(url)
       .then((res) => res.json())
@@ -65,7 +70,7 @@ function App() {
 
   // 🔥 CHECKOUT
   const finalizarCompra = () => {
-    fetch("http://127.0.0.1:8002/pedidos", {
+    fetch(`${API_URL}/pedidos`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -138,7 +143,7 @@ function App() {
       <div className="grid">
         {productosFiltrados.map((p) => {
           const url = p.imagen
-            ? `http://127.0.0.1:8002/images/${p.imagen.trim()}`
+            ? `${API_URL}/images/${p.imagen.trim()}`
             : "https://via.placeholder.com/200";
 
           const categoriaId =
@@ -156,7 +161,6 @@ function App() {
         })}
       </div>
 
-      {/* 🔥 MODAL */}
       {mostrarCarrito && (
         <div className="modal">
           <div className="modal-content">
@@ -175,7 +179,6 @@ function App() {
 
             <h3>Total: {"$" + total.toLocaleString("es-CO")}</h3>
 
-            {/* 🔥 BOTÓN CHECKOUT */}
             {carrito.length > 0 && (
               <button onClick={finalizarCompra}>Finalizar compra 💳</button>
             )}
