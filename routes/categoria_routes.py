@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import Categoria
 from schemas.categoria_schema import CategoriaCreate
-from auth import verificar_admin, verificar_token
+from auth import verificar_admin
 
 router = APIRouter(prefix="/categorias", tags=["Categorias"])
 

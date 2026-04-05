@@ -8,7 +8,7 @@ from utils.token import create_access_token
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
-# 🔐 REGISTRO
+
 @router.post("/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
     existing_user = db.query(Usuario).filter(
@@ -20,7 +20,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 
     new_user = Usuario(
         username=user.username,
-        password=hash_password(user.password),  # 🔥 HASH CORRECTO
+        password=hash_password(user.password),
         role="user"
     )
 
@@ -31,7 +31,6 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     return {"mensaje": "Usuario creado correctamente"}
 
 
-# 🔥 RESET (solo para pruebas)
 @router.get("/reset-users")
 def reset_users(db: Session = Depends(get_db)):
     db.query(Usuario).delete()
@@ -39,7 +38,6 @@ def reset_users(db: Session = Depends(get_db)):
     return {"msg": "usuarios eliminados"}
 
 
-# 🔐 LOGIN
 @router.post("/login")
 def login(user: UserCreate, db: Session = Depends(get_db)):
     user_db = db.query(Usuario).filter(
@@ -63,7 +61,6 @@ def login(user: UserCreate, db: Session = Depends(get_db)):
     }
 
 
-# 👑 HACER ADMIN
 @router.post("/make-admin/{username}")
 def make_admin(username: str, db: Session = Depends(get_db)):
     user = db.query(Usuario).filter(Usuario.username == username).first()
