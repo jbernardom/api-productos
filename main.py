@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+import os
 
 # 🔹 Rutas
 from routes.auth_routes import router as auth_router
@@ -23,12 +24,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 🔥 CREAR TABLAS (FORMA CORRECTA)
+# 🔥 CREAR TABLAS (CON LOGS)
 @app.on_event("startup")
 def startup():
-    Base.metadata.create_all(bind=engine)
+    try:
+        print("🔥 Iniciando aplicación...")
+        Base.metadata.create_all(bind=engine)
+        print("✅ Tablas creadas correctamente")
+    except Exception as e:
+        print("❌ Error creando tablas:", e)
 
-# 🔥 IMÁGENES (IMPORTANTE: validar carpeta)
+# 🔥 ASEGURAR CARPETA IMAGES (EVITA CRASH EN RENDER)
+if not os.path.exists("images"):
+    os.makedirs("images")
+
 app.mount("/images", StaticFiles(directory="images"), name="images")
 
 # 🔥 RUTAS
