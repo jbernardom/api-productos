@@ -14,7 +14,7 @@ from models import *
 
 app = FastAPI(title="API E-commerce", version="1.0.0")
 
-# 🔥 CORS (IMPORTANTE)
+# 🔥 CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -23,10 +23,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 🔥 CREAR TABLAS
-Base.metadata.create_all(bind=engine)
+# 🔥 CREAR TABLAS (FORMA CORRECTA)
+@app.on_event("startup")
+def startup():
+    Base.metadata.create_all(bind=engine)
 
-# 🔥 IMÁGENES
+# 🔥 IMÁGENES (IMPORTANTE: validar carpeta)
 app.mount("/images", StaticFiles(directory="images"), name="images")
 
 # 🔥 RUTAS
